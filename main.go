@@ -22,13 +22,12 @@ func main() {
 }
 
 func bigData() []byte {
-	file, err := os.Open("./2023-values.png")
+	file, err := os.Open("./agile.png")
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
 
-	// Read the file into memory
 	data, err := ioutil.ReadAll(file)
 	if err != nil {
 		panic(err)

@@ -1,6 +1,8 @@
 # Go Escape Analysis
 
-Profiling a small program and using escape analysis to demonstrate why, when manipulating big or variable size data, we should pass a pointer to it in Go functions:
+When manipulating large or variable-sized data in Go functions, it is important to understand the performance implications of passing data as a value versus passing a pointer to the data. By profiling a small program and using escape analysis, we can demonstrate why passing a pointer is often more efficient.
+
+If you return a pointer, the Garbage Collector (GC) can't understand when it will stop being used, but if you declare a local pointer, the GC can free the related memory when the function is over.
 
 Prefer:
 
@@ -10,7 +12,7 @@ func getData(data *[]byte) {
 }
 ```
 
-over this:
+over:
 
 ```go
 func getData() *[]byte {
@@ -19,17 +21,27 @@ func getData() *[]byte {
 }
 ```
 
-[Dig deeper here](https://youtu.be/2557w0qsDV0).
+This is why we need to use readers like so:
 
-Commands used:
+```go
+buffer := make([]byte, 1024)
+n, err := file.Read(buffer)
+```
+
+instead of just returning the buffer from `file.Read`.
+
+* [Understanding Allocations: the Stack and the Heap](https://youtu.be/ZMZpH4yT7M0)
+* [Escape Analysis and Memory Profiling](https://youtu.be/2557w0qsDV0)
+
+## Commands
 
 ```sh
-go run main.go
+go run main.go -memprofile mem.out
 go build -gcflags="-m -m" main.go
 go tool pprof -alloc_space mem.pprof
 ```
 
-How it runs:
+## Run it!
 
 ```sh
 ~/dev/go/escape-analysis(main)✗$ go version
@@ -37,8 +49,8 @@ go version go1.19.5 darwin/amd64
 
 ~/dev/go/escape-analysis(main)✗$ go run main.go
 
-getBadData: [1317914/1400832]0xc000220000 1317914
-getGoodData [1317914/1400832]0xc000700000 1317914
+getBadData: [593966/704512]0xc00038e000 593966
+getGoodData [593966/704512]0xc000580000 593966
 
 ~/dev/go/escape-analysis(main)✗$ go build -gcflags="-m -m" main.go
 # command-line-arguments
@@ -81,3 +93,23 @@ Note on `//go:noinline`: This disables the compiler optimisation, for more compl
 ```
 
 Note on `mem.pprof`: This is for deeper analysis.
+
+## PProf
+
+```sh
+$ go tool pprof -alloc_space mem.pprof
+Type: alloc_space
+Time: May 5, 2023 at 12:55pm (AEST)
+Entering interactive mode (type "help" for commands, "o" for options)
+(pprof) list getBadData
+Total: 13.13MB
+ROUTINE ======================== main.getBadData in ~/dev/go/escape-analysis/main.go
+         0     6.60MB (flat, cum) 50.30% of Total
+         .          .     50://go:noinline
+         .     6.60MB     51:func getBadData() *[]byte {
+         .          .     52:	data := bigData()
+         .          .     53:	return &data
+         .          .     54:}
+         .          .     55:
+         .          .     56://go:noinline
+```
