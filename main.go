@@ -47,8 +47,6 @@ func run() {
 	println("getGoodData", goodData, len(goodData))
 }
 
-// More complex methods wouldn't get inlined
-// I'm keeping it simple and disabling the compiler optimisation
 //go:noinline
 func getBadData() *[]byte {
 	data := bigData() // :52:2: data escapes to heap

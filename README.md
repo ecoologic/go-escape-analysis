@@ -1,6 +1,27 @@
-# Notes
+# Go Escape Analysis
 
-Video: https://www.youtube.com/watch?v=2557w0qsDV0&ab_channel=SingaporeGophers
+Profiling a small program and using escape analysis to demonstrate why, when manipulating big or variable size data, we should pass a pointer to it in Go functions:
+
+Prefer:
+
+```go
+func getData(data *[]byte) {
+	*data = bigData()
+}
+```
+
+over this:
+
+```go
+func getData() *[]byte {
+	data := bigData()
+	return &data
+}
+```
+
+[Dig deeper here](https://youtu.be/2557w0qsDV0).
+
+Commands used:
 
 ```sh
 go run main.go
@@ -8,7 +29,12 @@ go build -gcflags="-m -m" main.go
 go tool pprof -alloc_space mem.pprof
 ```
 
-```
+How it runs:
+
+```sh
+~/dev/go/escape-analysis(main)✗$ go version
+go version go1.19.5 darwin/amd64
+
 ~/dev/go/escape-analysis(main)✗$ go run main.go
 
 getBadData: [1317914/1400832]0xc000220000 1317914
@@ -35,3 +61,23 @@ getGoodData [1317914/1400832]0xc000700000 1317914
 ./main.go:57:18: data does not escape
 ./main.go:15:21: main capturing by value: .autotmp_12 (addr=false assign=false width=8)
 ```
+
+`getBadData` escapes to the heap:
+
+```
+./main.go:52:2: data escapes to heap:
+```
+
+`getGoodData` doesn't:
+
+```
+./main.go:57:18: data does not escape
+```
+
+Note on `//go:noinline`: This disables the compiler optimisation, for more complex methods we would read something like this:
+
+```
+./main.go:10:6: cannot inline main: unhandled op DEFER
+```
+
+Note on `mem.pprof`: This is for deeper analysis.
