@@ -2,7 +2,12 @@
 
 When manipulating large or variable-sized data in Go functions, it is important to understand the performance implications of passing data as a value versus passing a pointer to the data. By profiling a small program and using escape analysis, we can demonstrate why passing a pointer is often more efficient.
 
-If you return a pointer, the Garbage Collector (GC) can't understand when it will stop being used, but if you declare a local pointer, the GC can free the related memory when the function is over.
+If you declare a local pointer inside a function and don't return it or store it somewhere else that is accessible outside of the function, the garbage collector can free the related memory when the function is over. But if you return a pointer, the memory will be freed by the garbage collector only when there are no more references to it in the program.
+
+[From Golang FAQ](https://tip.golang.org/doc/faq#stack_or_heap)
+
+> if the compiler cannot prove that the variable is not referenced after the function returns, then the compiler must allocate the variable on the garbage-collected heap to avoid dangling pointer errors.
+
 
 Prefer:
 

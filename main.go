@@ -15,11 +15,38 @@ func main() {
 	}
 	defer memFile.Close()
 
-	run()
+	badPart()
+	goodPart()
 
 	if err = pprof.WriteHeapProfile(memFile); err != nil {
 		panic(err)
 	}
+}
+
+func badPart() {
+	badData := getBadData()
+	println("getBadData:", *badData, len(*badData))
+	gc()
+}
+
+func goodPart() {
+	var goodData []byte
+	getGoodData(&goodData)
+	println("getGoodData", goodData, len(goodData))
+	gc()
+}
+
+//go:noinline
+func getBadData() *[]byte {
+	data := bigData() // :52:2: data escapes to heap
+	logGC(&data, "badData")
+	return &data
+}
+
+//go:noinline
+func getGoodData(data *[]byte) { // :57:18: data does not escape
+	*data = bigData()
+	logGC(data, "goodData")
 }
 
 func bigData() []byte {
@@ -42,32 +69,8 @@ func logGC(data *[]byte, name string) {
 	})
 }
 
-func run() {
-	badData := getBadData()
-	fmt.Println("1\n")
+func gc() {
+	println("GC...")
 	runtime.GC()
-	fmt.Println("2\n")
-	println("getBadData:", *badData, len(*badData))
-
-	var goodData []byte
-	fmt.Println("3\n")
-	getGoodData(&goodData)
-	fmt.Println("4\n")
-	runtime.GC()
-	println("getGoodData", goodData, len(goodData))
-	runtime.GC()
-	fmt.Println("5\n")
-}
-
-//go:noinline
-func getBadData() *[]byte {
-	data := bigData() // :52:2: data escapes to heap
-	logGC(&data, "badData")
-	return &data
-}
-
-//go:noinline
-func getGoodData(data *[]byte) { // :57:18: data does not escape
-	*data = bigData()
-	logGC(data, "goodData")
+	println("...GC")
 }
